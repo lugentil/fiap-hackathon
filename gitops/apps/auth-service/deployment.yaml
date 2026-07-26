@@ -21,7 +21,7 @@ spec:
         - name: ecr-secret
       containers:
         - name: auth-service
-          image: 987168675043.dkr.ecr.us-east-1.amazonaws.com/solidarytech/auth-service:0d3f98fa0bcf22235729e13793616c003a9eed8f
+          image: 987168675043.dkr.ecr.us-east-1.amazonaws.com/solidarytech/auth-service:e777bfaf0736c403e368e31ffc7e85446cd383e1
           imagePullPolicy: Always
           ports:
             - containerPort: 8001
