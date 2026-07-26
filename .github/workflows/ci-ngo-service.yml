@@ -1,0 +1,25 @@
+name: CI - ngo-service
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["ngo-service/**"]
+  pull_request:
+    branches: [main]
+    paths: ["ngo-service/**"]
+
+permissions:
+  contents: write
+
+jobs:
+  ci:
+    uses: ./.github/workflows/_ci-python.yml
+    with:
+      service_name: ngo-service
+      service_path: ngo-service
+      ecr_repository: solidarytech/ngo-service
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}

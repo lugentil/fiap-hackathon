@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: donation-service
+  namespace: donation-service
+  labels:
+    app: donation-service
+    tier: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: donation-service
+  template:
+    metadata:
+      labels:
+        app: donation-service
+        tier: backend
+    spec:
+      imagePullSecrets:
+        - name: ecr-secret
+      containers:
+        - name: donation-service
+          image: 987168675043.dkr.ecr.us-east-1.amazonaws.com/solidarytech/donation-service:0d3f98fa0bcf22235729e13793616c003a9eed8f
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8004
+              protocol: TCP
+          envFrom:
+            - secretRef:
+                name: donation-service-secrets
+            - secretRef:
+                name: aws-credentials
+          env:
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://otel-collector.observability.svc.cluster.local:4317"
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: "grpc"
+            - name: OTEL_SERVICE_NAME
+              value: "donation-service"
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "service.namespace=solidarytech,deployment.environment=production"
+            - name: OTEL_TRACES_SAMPLER
+              value: "parentbased_always_on"
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8004
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8004
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3

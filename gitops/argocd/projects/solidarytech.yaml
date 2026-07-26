@@ -1,0 +1,29 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: solidarytech
+  namespace: argocd
+spec:
+  description: Plataforma de doações SolidaryTech
+  sourceRepos:
+    - "*"
+  destinations:
+    - namespace: auth-service
+      server: https://kubernetes.default.svc
+    - namespace: ngo-service
+      server: https://kubernetes.default.svc
+    - namespace: volunteer-service
+      server: https://kubernetes.default.svc
+    - namespace: donation-service
+      server: https://kubernetes.default.svc
+    - namespace: report-service
+      server: https://kubernetes.default.svc
+    - namespace: argocd
+      server: https://kubernetes.default.svc
+    - namespace: observability
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+    - group: networking.k8s.io
+      kind: IngressClass

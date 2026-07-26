@@ -1,0 +1,25 @@
+name: CI - donation-service 
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["donation-service/**"]
+  pull_request:
+    branches: [main]
+    paths: ["donation-service/**"]
+
+permissions:
+  contents: write
+
+jobs:
+  ci:
+    uses: ./.github/workflows/_ci-go.yml
+    with:
+      service_name: donation-service
+      service_path: donation-service
+      ecr_repository: solidarytech/donation-service
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
