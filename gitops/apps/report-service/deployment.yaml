@@ -21,7 +21,7 @@ spec:
         - name: ecr-secret
       containers:
         - name: report-service
-          image: 987168675043.dkr.ecr.us-east-1.amazonaws.com/solidarytech/report-service:cc4cd8612614174ed8b9c805adc00f700e49492d
+          image: 987168675043.dkr.ecr.us-east-1.amazonaws.com/solidarytech/report-service:dc30142d4cd88819cc4d11a0455c5570261ba423
           imagePullPolicy: Always
           ports:
             - containerPort: 8005
