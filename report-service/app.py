@@ -9,6 +9,9 @@ import boto3
 from botocore.exceptions import NoCredentialsError, ClientError
 from flask import Flask, jsonify
 from dotenv import load_dotenv
+from opentelemetry import trace
+from opentelemetry.propagate import extract
+from opentelemetry.trace import SpanKind
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 log = logging.getLogger(__name__)
@@ -36,40 +39,50 @@ except Exception as e:
     sys.exit(1)
 
 
+def _carrier_from_message(message):
+    # remonta o traceparent a partir dos atributos que o donation-service injetou
+    attrs = message.get('MessageAttributes', {})
+    return {k: v['StringValue'] for k, v in attrs.items() if v.get('StringValue')}
+
+
 def process_message(message):
-    try:
-        log.info(f"Processando mensagem ID: {message['MessageId']}")
-        body = json.loads(message['Body'])
+    # continua o trace iniciado no donation-service, ligando os dois no mesmo fluxo
+    ctx = extract(_carrier_from_message(message))
+    tracer = trace.get_tracer("report-service")
+    with tracer.start_as_current_span("process donation event", context=ctx, kind=SpanKind.CONSUMER):
+        try:
+            log.info(f"Processando mensagem ID: {message['MessageId']}")
+            body = json.loads(message['Body'])
 
-        event_id = str(uuid.uuid4())
+            event_id = str(uuid.uuid4())
 
-        item = {
-            'event_id': {'S': event_id},
-            'donation_id': {'N': str(body['id'])},
-            'ngo_id': {'N': str(body['ngo_id'])},
-            'amount': {'N': str(body['amount'])},
-            'donor_name': {'S': body['donor_name']},
-            'status': {'S': body['status']},
-            'created_at': {'S': body['created_at']}
-        }
+            item = {
+                'event_id': {'S': event_id},
+                'donation_id': {'N': str(body['id'])},
+                'ngo_id': {'N': str(body['ngo_id'])},
+                'amount': {'N': str(body['amount'])},
+                'donor_name': {'S': body['donor_name']},
+                'status': {'S': body['status']},
+                'created_at': {'S': body['created_at']}
+            }
 
-        dynamodb_client.put_item(
-            TableName=DYNAMODB_TABLE_NAME,
-            Item=item
-        )
+            dynamodb_client.put_item(
+                TableName=DYNAMODB_TABLE_NAME,
+                Item=item
+            )
 
-        log.info(f"Evento {event_id} (Doação {body['id']}) salvo no DynamoDB.")
+            log.info(f"Evento {event_id} (Doação {body['id']}) salvo no DynamoDB.")
 
-        sqs_client.delete_message(
-            QueueUrl=SQS_QUEUE_URL,
-            ReceiptHandle=message['ReceiptHandle']
-        )
-    except json.JSONDecodeError:
-        log.error(f"Erro ao decodificar JSON da mensagem ID: {message['MessageId']}")
-    except ClientError as e:
-        log.error(f"Erro do Boto3 (DynamoDB ou SQS) ao processar {message['MessageId']}: {e}")
-    except Exception as e:
-        log.error(f"Erro inesperado ao processar {message['MessageId']}: {e}")
+            sqs_client.delete_message(
+                QueueUrl=SQS_QUEUE_URL,
+                ReceiptHandle=message['ReceiptHandle']
+            )
+        except json.JSONDecodeError:
+            log.error(f"Erro ao decodificar JSON da mensagem ID: {message['MessageId']}")
+        except ClientError as e:
+            log.error(f"Erro do Boto3 (DynamoDB ou SQS) ao processar {message['MessageId']}: {e}")
+        except Exception as e:
+            log.error(f"Erro inesperado ao processar {message['MessageId']}: {e}")
 
 
 def sqs_worker_loop():
@@ -79,7 +92,8 @@ def sqs_worker_loop():
             response = sqs_client.receive_message(
                 QueueUrl=SQS_QUEUE_URL,
                 MaxNumberOfMessages=10,
-                WaitTimeSeconds=20
+                WaitTimeSeconds=20,
+                MessageAttributeNames=['All']
             )
 
             messages = response.get('Messages', [])
