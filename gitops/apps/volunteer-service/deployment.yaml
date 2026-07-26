@@ -21,7 +21,7 @@ spec:
         - name: ecr-secret
       containers:
         - name: volunteer-service
-          image: 987168675043.dkr.ecr.us-east-1.amazonaws.com/solidarytech/volunteer-service:7d816e3fb98a6be59aaec8bb29c1d1c5e4b799f7
+          image: 987168675043.dkr.ecr.us-east-1.amazonaws.com/solidarytech/volunteer-service:0f8d97004a33be0c5e9d5dbb195bf73ec587fbda
           imagePullPolicy: Always
           ports:
             - containerPort: 8003
