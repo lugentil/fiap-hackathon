@@ -21,7 +21,7 @@ spec:
         - name: ecr-secret
       containers:
         - name: donation-service
-          image: 987168675043.dkr.ecr.us-east-1.amazonaws.com/solidarytech/donation-service:431cb4a5a67eb4dccebef9c6f0e1ad70d0b315bd
+          image: 987168675043.dkr.ecr.us-east-1.amazonaws.com/solidarytech/donation-service:dc30142d4cd88819cc4d11a0455c5570261ba423
           imagePullPolicy: Always
           ports:
             - containerPort: 8004
