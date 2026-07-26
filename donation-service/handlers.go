@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
-	"log"
 	"net/http"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/sqs"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 )
 
 func (a *App) healthHandler(w http.ResponseWriter, r *http.Request) {
@@ -74,7 +76,8 @@ func (a *App) donationHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if a.SqsSvc != nil {
-			go a.sendNotificationEvent(d)
+			// WithoutCancel: a goroutine sobrevive ao fim da requisicao, mas mantem o trace
+			go a.sendNotificationEvent(context.WithoutCancel(ctx), d)
 		}
 
 		w.WriteHeader(http.StatusCreated)
@@ -112,17 +115,52 @@ func (a *App) donationHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, `{"error":"Método não permitido"}`, http.StatusMethodNotAllowed)
 }
 
-func (a *App) sendNotificationEvent(d Donation) {
+func (a *App) sendNotificationEvent(ctx context.Context, d Donation) {
+	ctx, span := otel.Tracer("donation-service").Start(ctx, "publish donation event",
+		trace.WithSpanKind(trace.SpanKindProducer))
+	defer span.End()
+
 	body, err := json.Marshal(d)
 	if err != nil {
-		log.Printf("Erro ao serializar evento SQS: %v", err)
+		logCtx(ctx, "Erro ao serializar evento SQS: %v", err)
 		return
 	}
+
+	// injeta o traceparent nos atributos da mensagem para o report-service continuar o mesmo trace
+	attrs := sqsAttrCarrier{}
+	otel.GetTextMapPropagator().Inject(ctx, attrs)
+
 	_, err = a.SqsSvc.SendMessage(&sqs.SendMessageInput{
-		MessageBody: aws.String(string(body)),
-		QueueUrl:    aws.String(a.SqsQueueURL),
+		MessageBody:       aws.String(string(body)),
+		QueueUrl:          aws.String(a.SqsQueueURL),
+		MessageAttributes: attrs,
 	})
 	if err != nil {
-		log.Printf("Falha ao despachar evento SQS: %v", err)
+		logCtx(ctx, "Falha ao despachar evento SQS: %v", err)
 	}
+}
+
+// sqsAttrCarrier adapta os message attributes do SQS ao TextMapCarrier do OpenTelemetry
+type sqsAttrCarrier map[string]*sqs.MessageAttributeValue
+
+func (c sqsAttrCarrier) Get(key string) string {
+	if v, ok := c[key]; ok && v.StringValue != nil {
+		return *v.StringValue
+	}
+	return ""
+}
+
+func (c sqsAttrCarrier) Set(key, value string) {
+	c[key] = &sqs.MessageAttributeValue{
+		DataType:    aws.String("String"),
+		StringValue: aws.String(value),
+	}
+}
+
+func (c sqsAttrCarrier) Keys() []string {
+	keys := make([]string, 0, len(c))
+	for k := range c {
+		keys = append(keys, k)
+	}
+	return keys
 }
