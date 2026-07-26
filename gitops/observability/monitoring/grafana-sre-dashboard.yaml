@@ -241,7 +241,7 @@ data:
           },
           "targets": [
             {
-              "expr": "100 * sum(increase(http_server_duration_milliseconds_bucket{service_name=\"donation-service\",le=\"500\"}[30d])) / sum(increase(http_server_duration_milliseconds_count{service_name=\"donation-service\"}[30d]))",
+              "expr": "100 * sum(increase(http_server_duration_milliseconds_bucket{service_name=\"donation-service\",le=\"500.0\"}[30d])) / sum(increase(http_server_duration_milliseconds_count{service_name=\"donation-service\"}[30d]))",
               "refId": "A"
             }
           ],
@@ -294,7 +294,7 @@ data:
           },
           "targets": [
             {
-              "expr": "clamp_min(100 * (1 - ((1 - (sum(increase(http_server_duration_milliseconds_bucket{service_name=\"donation-service\",le=\"500\"}[30d])) / sum(increase(http_server_duration_milliseconds_count{service_name=\"donation-service\"}[30d])))) / 0.01)), 0)",
+              "expr": "clamp_min(100 * (1 - ((1 - (sum(increase(http_server_duration_milliseconds_bucket{service_name=\"donation-service\",le=\"500.0\"}[30d])) / sum(increase(http_server_duration_milliseconds_count{service_name=\"donation-service\"}[30d])))) / 0.01)), 0)",
               "refId": "A"
             }
           ],
