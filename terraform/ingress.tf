@@ -44,6 +44,12 @@ resource "helm_release" "ingress_nginx" {
     value = "tcp"
   }
 
+  # o NLB e criado pelo cloud provider do EKS, entao o default_tags do Terraform nao alcanca ele
+  set {
+    name  = "controller.service.annotations.service\\.beta\\.kubernetes\\.io/aws-load-balancer-additional-resource-tags"
+    value = join("\\,", [for chave, valor in var.finops_tags : "${chave}=${valor}"])
+  }
+
   set {
     name  = "controller.metrics.enabled"
     value = "true"
